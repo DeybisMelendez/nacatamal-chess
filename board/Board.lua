@@ -2,8 +2,6 @@ local Board = {
     -- Constantes de Board
     WHITE_TO_MOVE = true,
     BLACK_TO_MOVE = false,
-    --WHITE_TURN = 1,
-    --BLACK_TURN = -1,
     -- Piezas
     EMPTY = 0,
     W_PAWN = 1,
@@ -88,32 +86,32 @@ function Board:initializeMailbox()
 end
 
 function Board:convertSquareToCoords(square)
-    local file = square:byte() - string.byte('a') + self.FILE_A
+    local file = square:byte() - string.byte("a") + self.FILE_A
     local rank = tonumber(square:sub(2, 2)) + self.RANK_1 - 1
     return file, rank
 end
 
 function Board:print()
     local PIECE_SYMBOLS = {
-        [self.W_PAWN] = 'P',
-        [self.W_KNIGHT] = 'N',
-        [self.W_BISHOP] = 'B',
-        [self.W_ROOK] = 'R',
-        [self.W_QUEEN] = 'Q',
-        [self.W_KING] = 'K',
-        [self.B_PAWN] = 'p',
-        [self.B_KNIGHT] = 'n',
-        [self.B_BISHOP] = 'b',
-        [self.B_ROOK] = 'r',
-        [self.B_QUEEN] = 'q',
-        [self.B_KING] = 'k',
-        [self.EMPTY] = '.'  -- Assuming you have a value for empty squares
+        [self.W_PAWN] = "P",
+        [self.W_KNIGHT] = "N",
+        [self.W_BISHOP] = "B",
+        [self.W_ROOK] = "R",
+        [self.W_QUEEN] = "Q",
+        [self.W_KING] = "K",
+        [self.B_PAWN] = "p",
+        [self.B_KNIGHT] = "n",
+        [self.B_BISHOP] = "b",
+        [self.B_ROOK] = "r",
+        [self.B_QUEEN] = "q",
+        [self.B_KING] = "k",
+        [self.EMPTY] = "."  -- Assuming you have a value for empty squares
     }
 
     for rank = 10, 3, -1 do
         for file = 3, 10 do
             local piece = self.mailbox[file][rank]
-            io.write(PIECE_SYMBOLS[piece] or '.', ' ')  -- Print the piece symbol or '.' for empty squares
+            io.write(PIECE_SYMBOLS[piece] or ".", " ")  -- Print the piece symbol or "." for empty squares
         end
         io.write("\n")
     end
@@ -122,18 +120,18 @@ end
 
 function Board:parseFEN(fen)
     local PIECES = {
-        ['P'] = self.W_PAWN,  -- White Pawn
-        ['N'] = self.W_KNIGHT,  -- White Knight
-        ['B'] = self.W_BISHOP,  -- White Bishop
-        ['R'] = self.W_ROOK,  -- White Rook
-        ['Q'] = self.W_QUEEN,  -- White Queen
-        ['K'] = self.W_KING,  -- White King
-        ['p'] = self.B_PAWN, -- Black Pawn
-        ['n'] = self.B_KNIGHT, -- Black Knight
-        ['b'] = self.B_BISHOP, -- Black Bishop
-        ['r'] = self.B_ROOK, -- Black Rook
-        ['q'] = self.B_QUEEN, -- Black Queen
-        ['k'] = self.B_KING  -- Black King
+        ["P"] = self.W_PAWN,  -- White Pawn
+        ["N"] = self.W_KNIGHT,  -- White Knight
+        ["B"] = self.W_BISHOP,  -- White Bishop
+        ["R"] = self.W_ROOK,  -- White Rook
+        ["Q"] = self.W_QUEEN,  -- White Queen
+        ["K"] = self.W_KING,  -- White King
+        ["p"] = self.B_PAWN, -- Black Pawn
+        ["n"] = self.B_KNIGHT, -- Black Knight
+        ["b"] = self.B_BISHOP, -- Black Bishop
+        ["r"] = self.B_ROOK, -- Black Rook
+        ["q"] = self.B_QUEEN, -- Black Queen
+        ["k"] = self.B_KING  -- Black King
     }
     local rank = self.RANK_8  -- Adjust rank to start from 8
     local file = self.FILE_A  -- Adjust file to start from A
@@ -151,7 +149,7 @@ function Board:parseFEN(fen)
 
     for i = 1, #piecePlacement do
         local char = piecePlacement:sub(i, i)
-        if char == '/' then
+        if char == "/" then
             rank = rank - 1  -- Move to the next rank down
             file = self.FILE_A  -- Reset file to A
         elseif char:match("%d") then
