@@ -61,8 +61,8 @@ local Board = {
     -- Atributos
     mailbox = {},
     sideToMove = true,
-    castlingRights = "",
-    enPassantSquare ="",
+    castlingRights = "-",
+    enPassantSquare = {0,0},
     halfMoveClock = 0,
     fullMoveNumber = 0
 }
@@ -70,25 +70,27 @@ local Board = {
 Board.PROMOTION_FLAGS = {Board.FLAG_QUEEN_PROMOTION, Board.FLAG_ROOK_PROMOTION, Board.FLAG_BISHOP_PROMOTION, Board.FLAG_KNIGHT_PROMOTION}
 Board.CAPTURE_PROMOTION_FLAGS = {Board.FLAG_QUEEN_PROMOTION_CAPTURE, Board.FLAG_ROOK_PROMOTION_CAPTURE, Board.FLAG_BISHOP_PROMOTION_CAPTURE, Board.FLAG_KNIGHT_PROMOTION_CAPTURE}
 
-
 function Board:initializeMailbox()
-    for file = 1, 12 do
-        self.mailbox[file] = {}
-        for rank = 1, 12 do
-            if file == 1 or file == 2 or file == 11 or file == 12 or
-               rank == 1 or rank == 2 or rank == 11 or rank == 12 then
-                self.mailbox[file][rank] = self.OUT
+    for rank = 1, 12 do
+        self.mailbox[rank] = {}
+        for file = 1, 12 do
+            if rank == 1 or rank == 2 or rank == 11 or rank == 12 or
+               file == 1 or file == 2 or file == 11 or file == 12 then
+                self.mailbox[rank][file] = self.OUT
             else
-                self.mailbox[file][rank] = self.EMPTY
+                self.mailbox[rank][file] = self.EMPTY
             end
         end
     end
 end
 
 function Board:convertSquareToCoords(square)
-    local file = square:byte() - string.byte("a") + self.FILE_A
-    local rank = tonumber(square:sub(2, 2)) + self.RANK_1 - 1
-    return file, rank
+    if square ~= "-" then
+        local file = square:byte() - string.byte("a") + self.FILE_A
+        local rank = tonumber(square:sub(2, 2)) + self.RANK_1 - 1
+        return {rank, file}
+    end
+    return {0,0}
 end
 
 function Board:print()
@@ -108,15 +110,14 @@ function Board:print()
         [self.EMPTY] = "."  -- Assuming you have a value for empty squares
     }
 
-    for rank = 10, 3, -1 do
-        for file = 3, 10 do
-            local piece = self.mailbox[file][rank]
+    for rank = self.RANK_8, self.RANK_1, -1 do
+        for file = self.FILE_A, self.FILE_H do
+            local piece = self.mailbox[rank][file]
             io.write(PIECE_SYMBOLS[piece] or ".", " ")  -- Print the piece symbol or "." for empty squares
         end
         io.write("\n")
     end
 end
-
 
 function Board:parseFEN(fen)
     local PIECES = {
@@ -133,20 +134,19 @@ function Board:parseFEN(fen)
         ["q"] = self.B_QUEEN, -- Black Queen
         ["k"] = self.B_KING  -- Black King
     }
-    local rank = self.RANK_8  -- Adjust rank to start from 8
-    local file = self.FILE_A  -- Adjust file to start from A
+    local rank = self.RANK_8  -- Adjust file to start from 8
+    local file = self.FILE_A  -- Adjust rank to start from A
 
     local parts = {}
     for part in string.gmatch(fen, "[^%s]+") do
         table.insert(parts, part)
     end
     local piecePlacement = parts[1]
-    local sideToMove = parts[2]
-    local castlingRights = parts[3]
-    local enPassantSquare = parts[4]
-    local halfMoveClock = tonumber(parts[5])
-    local fullMoveNumber = tonumber(parts[6])
-
+    self.sideToMove = parts[2] == "w" and true or false
+    self.castlingRights = parts[3]
+    self.enPassantSquare = self:convertSquareToCoords(parts[4])
+    self.halfMoveClock = parts[5] == nil and 0 or tonumber(parts[5])
+    self.fullMoveNumber = parts[6] == nil and 0 or tonumber(parts[6])
     for i = 1, #piecePlacement do
         local char = piecePlacement:sub(i, i)
         if char == "/" then
@@ -155,141 +155,125 @@ function Board:parseFEN(fen)
         elseif char:match("%d") then
             file = file + tonumber(char)  -- Skip the specified number of files
         elseif PIECES[char] then
-            self.mailbox[file][rank] = PIECES[char]
+            self.mailbox[rank][file] = PIECES[char]
             file = file + 1
         end
     end
 end
 
-
-function Board:isInsideBoard(file, rank)
-    return file >= self.FILE_A and file <= self.FILE_H and rank >= self.RANK_1 and rank <= self.RANK_8
+function Board:isInsideBoard(rank, file)
+    return self.mailbox[rank][file] ~= self.OUT
+    --return file >= self.FILE_A and file <= self.FILE_H and rank >= self.RANK_1 and rank <= self.RANK_8
 end
 
-function Board:isEmpty(file, rank)
-    return self.mailbox[file][rank] == self.EMPTY
+function Board:isEmpty(rank, file)
+    return self.mailbox[rank][file] == self.EMPTY
 end
 
-function Board:isEnemyPiece(file, rank, side)
-    local piece = self.mailbox[file][rank]
-    return (side == self.WHITE_TO_MOVE and piece < self.EMPTY) or (side == self.BLACK_TO_MOVE and piece > self.EMPTY and piece < self.OUT)
+function Board:isEnemyPiece(rank, file, side)
+    local piece = self.mailbox[rank][file]
+    return (side == self.WHITE_TO_MOVE and piece < self.EMPTY) or (side == self.BLACK_TO_MOVE and piece > self.EMPTY)
 end
 
-function Board:generatePawnMoves(file, rank, side, moves)
+function Board:generatePawnMoves(rank, file, side, moves)
     local direction = side == self.WHITE_TO_MOVE and 1 or -1
     local startRank = side == self.WHITE_TO_MOVE and self.RANK_2 or self.RANK_7
     local promotionRank = side == self.WHITE_TO_MOVE and self.RANK_8 or self.RANK_1
     -- Movimiento hacia adelante
-    if self:isEmpty(file, rank + direction) then
+    if self:isEmpty(rank + direction,file) then
         
         if rank + direction == promotionRank then
             for _, flag in ipairs(self.PROMOTION_FLAGS) do
-                table.insert(moves, {file, rank, file, rank + direction, flag})
+                table.insert(moves, {rank, file, rank + direction, file, flag})
             end
         else
-            table.insert(moves, {file, rank, file, rank + direction, self.FLAG_QUIET_MOVE})
+            table.insert(moves, {rank, file, rank + direction, file, self.FLAG_QUIET_MOVE})
             -- Movimiento inicial doble
-            if rank == startRank and self:isEmpty(file, rank + 2 * direction) then
-                table.insert(moves, {file, rank, file, rank + 2 * direction, self.FLAG_DOUBLE_PAWN_PUSH})
+            if rank == startRank and self:isEmpty(rank + 2 * direction, file) then
+                table.insert(moves, {rank, file, rank + 2 * direction, file, self.FLAG_DOUBLE_PAWN_PUSH})
             end
         end
     end
 
     -- Captura en diagonal izquierda
-    if self:isInsideBoard(file - 1, rank + direction) and self:isEnemyPiece(file - 1, rank + direction, side) then
+    if self:isInsideBoard(rank + direction, file - 1) and self:isEnemyPiece(rank + direction, file - 1, side) then
         if rank + direction == promotionRank then
             for _, flag in ipairs(self.CAPTURE_PROMOTION_FLAGS) do
-                table.insert(moves, {file, rank, file - 1, rank + direction, flag})
+                table.insert(moves, {rank, file, rank + direction, file - 1 , flag})
             end
         else
-            table.insert(moves, {file, rank, file - 1, rank + direction, self.FLAG_CAPTURE})
+            table.insert(moves, {rank, file, rank + direction, file - 1, self.FLAG_CAPTURE})
         end
     end
 
     -- Captura en diagonal derecha
-    if self:isInsideBoard(file + 1, rank + direction) and self:isEnemyPiece(file + 1, rank + direction, side) then
+    if self:isInsideBoard(rank + 1, file + direction) and self:isEnemyPiece(rank + 1, file + direction, side) then
         if rank + direction == promotionRank then
             for _, flag in ipairs(self.CAPTURE_PROMOTION_FLAGS) do
-                table.insert(moves, {file, rank, file + 1, rank + direction, flag})
+                table.insert(moves, {rank, file, rank + direction, file + 1, flag})
             end
         else
-            table.insert(moves, {file, rank, file + 1, rank + direction, self.FLAG_CAPTURE})
+            table.insert(moves, {rank, file, rank + direction, file + 1, self.FLAG_CAPTURE})
         end
     end
 
     -- Captura al paso (en passant)
-    if self.enPassantSquare ~= "" then
-        local epFile, epRank = self:convertSquareToCoords(self.enPassantSquare)
-        if rank == (side == self.WHITE_TO_MOVE and self.RANK_5 or self.RANK_4) and
+    if self.enPassantSquare[1] ~= 0 then
+        local epRank, epFile = unpack(self.enPassantSquare)
+        if file == (side == self.WHITE_TO_MOVE and self.RANK_5 or self.RANK_4) and
             (file - 1 == epFile or file + 1 == epFile) and epRank == rank + direction then
-            table.insert(moves, {file, rank, epFile, epRank, self.FLAG_EP_CAPTURE})
+            table.insert(moves, {rank, file, epRank, epFile, self.FLAG_EP_CAPTURE})
         end
     end
 
 end
 
-function Board:generateKnightMoves(file, rank, side, moves)
+function Board:generateKnightMoves(rank, file, side, moves)
 
     for _, offset in ipairs(self.KNIGHT_MOVES) do
-        local newFile = file + offset[1]
-        local newRank = rank + offset[2]
-        if self:isInsideBoard(newFile, newRank) then
-            if self:isEmpty(newFile, newRank) then
-                table.insert(moves, {file, rank, newFile, newRank, self.FLAG_QUIET_MOVE})
-            elseif self:isEnemyPiece(newFile, newRank, side) then
-                table.insert(moves, {file, rank, newFile, newRank, self.FLAG_CAPTURE})
+        local newRank = rank + offset[1]
+        local newFile = file + offset[2]
+        if self:isInsideBoard(newRank, newFile) then
+            if self:isEmpty(newRank, newFile) then
+                table.insert(moves, {rank, file, newRank, newFile, self.FLAG_QUIET_MOVE})
+            elseif self:isEnemyPiece(newRank, newFile, side) then
+                table.insert(moves, {rank, file, newRank, newFile, self.FLAG_CAPTURE})
             end
         end
     end
 end
 
-function Board:generateBishopMoves(file, rank, side, moves)
+function Board:generateBishopMoves(rank, file, side, moves)
     -- Movimientos diagonales (noreste, noroeste, sureste, suroeste)
-    for fileDirection = -1, 1, 2 do
-        for rankDirection = -1, 1, 2 do
-            local newFile = file + fileDirection
+    for rankDirection = -1, 1, 2 do
+        for fileDirection = -1, 1, 2 do
             local newRank = rank + rankDirection
-            while self:isInsideBoard(newFile, newRank) do
-                if self:isEmpty(newFile, newRank) then
-                    table.insert(moves, {file, rank, newFile, newRank, self.FLAG_QUIET_MOVE})
-                elseif self:isEnemyPiece(newFile, newRank, side) then
-                    table.insert(moves, {file, rank, newFile, newRank, self.FLAG_CAPTURE})
+            local newFile = file + fileDirection
+            while self:isInsideBoard(newRank, newFile) do
+                if self:isEmpty(newRank, newFile) then
+                    table.insert(moves, {rank, file, newRank, newFile, self.FLAG_QUIET_MOVE})
+                elseif self:isEnemyPiece(newRank, newFile, side) then
+                    table.insert(moves, {rank, file, newRank, newFile, self.FLAG_CAPTURE})
                     break
                 else
                     break
                 end
-                newFile = newFile + fileDirection
                 newRank = newRank + rankDirection
+                newFile = newFile + fileDirection
             end
         end
     end
 end
 
-function Board:generateRookMoves(file, rank, side,moves)
+function Board:generateRookMoves(rank, file, side,moves)
     -- Movimientos verticales (arriba y abajo)
     for direction = -1, 1, 2 do
-        local newRank = rank + direction
-        while self:isInsideBoard(file, newRank) do
-            if self:isEmpty(file, newRank) then
-                table.insert(moves, {file, rank, file, newRank, self.FLAG_QUIET_MOVE})
-            elseif self:isEnemyPiece(file, newRank, side) then
-                table.insert(moves, {file, rank, file, newRank, self.FLAG_CAPTURE})
-                break
-            else
-                break
-            end
-            newRank = newRank + direction
-        end
-    end
-
-    -- Movimientos horizontales (izquierda y derecha)
-    for direction = -1, 1, 2 do
         local newFile = file + direction
-        while self:isInsideBoard(newFile, rank) do
-            if self:isEmpty(newFile, rank) then
-                table.insert(moves, {file, rank, newFile, rank, self.FLAG_QUIET_MOVE})
-            elseif self:isEnemyPiece(newFile, rank, side) then
-                table.insert(moves, {file, rank, newFile, rank, self.FLAG_CAPTURE})
+        while self:isInsideBoard(rank, newFile) do
+            if self:isEmpty(rank, newFile) then
+                table.insert(moves, {rank, file, rank, newFile, self.FLAG_QUIET_MOVE})
+            elseif self:isEnemyPiece(rank, newFile, side) then
+                table.insert(moves, {rank, file, rank, newFile, self.FLAG_CAPTURE})
                 break
             else
                 break
@@ -297,17 +281,15 @@ function Board:generateRookMoves(file, rank, side,moves)
             newFile = newFile + direction
         end
     end
-end
 
-function Board:generateRookMoves(file, rank, side, moves)
-    -- Movimientos verticales (arriba y abajo)
+    -- Movimientos horizontales (izquierda y derecha)
     for direction = -1, 1, 2 do
         local newRank = rank + direction
-        while self:isInsideBoard(file, newRank) do
-            if self:isEmpty(file, newRank) then
-                table.insert(moves, {file, rank, file, newRank, self.FLAG_QUIET_MOVE})
-            elseif self:isEnemyPiece(file, newRank, side) then
-                table.insert(moves, {file, rank, file, newRank, self.FLAG_CAPTURE})
+        while self:isInsideBoard(newRank, file) do
+            if self:isEmpty(newRank, file) then
+                table.insert(moves, {rank, file, newRank, file, self.FLAG_QUIET_MOVE})
+            elseif self:isEnemyPiece(newRank, file, side) then
+                table.insert(moves, {rank, file, newRank, file, self.FLAG_CAPTURE})
                 break
             else
                 break
@@ -315,72 +297,57 @@ function Board:generateRookMoves(file, rank, side, moves)
             newRank = newRank + direction
         end
     end
-
-    -- Movimientos horizontales (izquierda y derecha)
-    for direction = -1, 1, 2 do
-        local newFile = file + direction
-        while self:isInsideBoard(newFile, rank) do
-            if self:isEmpty(newFile, rank) then
-                table.insert(moves, {file, rank, newFile, rank, self.FLAG_QUIET_MOVE})
-            elseif self:isEnemyPiece(newFile, rank, side) then
-                table.insert(moves, {file, rank, newFile, rank, self.FLAG_CAPTURE})
-                break
-            else
-                break
-            end
-            newFile = newFile + direction
-        end
-    end
 end
 
-function Board:generateQueenMoves(file, rank, side, moves)
+function Board:generateQueenMoves(rank, file, side, moves)
     -- Generar movimientos de torre
-    self:generateRookMoves(file, rank, side,moves)
+    self:generateRookMoves(rank, file, side,moves)
 
     -- Generar movimientos de alfil
-    self:generateBishopMoves(file, rank, side,moves)
+    self:generateBishopMoves(rank, file, side,moves)
 end
 
-function Board:generateKingMoves(file, rank, side, moves)
+function Board:generateKingMoves(rank, file, side, moves)
 
     for _, dir in ipairs(self.KING_MOVES) do
-        local newFile = file + dir[1]
-        local newRank = rank + dir[2]
+        local newRank = rank + dir[1]
+        local newFile = file + dir[2]
 
-        if self:isInsideBoard(newFile, newRank) then
-            if self:isEmpty(newFile, newRank) then
-                table.insert(moves, {file, rank, newFile, newRank, self.FLAG_QUIET_MOVE})
-            elseif self:isEnemyPiece(newFile, newRank, side) then
-                table.insert(moves, {file, rank, newFile, newRank, self.FLAG_CAPTURE})
+        if self:isInsideBoard(newRank, newFile) then
+            if self:isEmpty(newRank, newFile) then
+                table.insert(moves, {rank, file, newRank, newFile, self.FLAG_QUIET_MOVE})
+            elseif self:isEnemyPiece(newRank, newFile, side) then
+                table.insert(moves, {rank, file, newRank, newFile, self.FLAG_CAPTURE})
             end
         end
     end
+    -- #TODO: Agregar movimientos de enroque, solo mover al rey
 end
 
 function Board:generatePseudoLegalMoves()
     local moves = {}
-    for file = self.FILE_A, self.FILE_H do
-        for rank = self.RANK_1, self.RANK_8 do
-            local piece = self.mailbox[file][rank]
-            if piece ~= self.EMPTY and piece ~= self.OUT then
+    for rank = self.RANK_1, self.RANK_8 do
+        for file = self.FILE_A, self.FILE_H do
+            local piece = self.mailbox[rank][file]
+            if piece ~= self.EMPTY then
                 if (piece == self.W_PAWN and self.sideToMove == self.WHITE_TO_MOVE) or
                    (piece == self.B_PAWN and self.sideToMove == self.BLACK_TO_MOVE) then
-                    self:generatePawnMoves(file, rank, self.sideToMove, moves)
+                    self:generatePawnMoves(rank, file, self.sideToMove, moves)
                 elseif (piece == self.W_KNIGHT and self.sideToMove == self.WHITE_TO_MOVE) or
                        (piece == self.B_KNIGHT and self.sideToMove == self.BLACK_TO_MOVE) then
-                    self:generateKnightMoves(file, rank, self.sideToMove, moves)
+                    self:generateKnightMoves(rank, file, self.sideToMove, moves)
                 elseif (piece == self.W_BISHOP and self.sideToMove == self.WHITE_TO_MOVE) or
                        (piece == self.B_BISHOP and self.sideToMove == self.BLACK_TO_MOVE) then
-                    self:generateBishopMoves(file, rank, self.sideToMove, moves)
+                    self:generateBishopMoves(rank, file, self.sideToMove, moves)
                 elseif (piece == self.W_ROOK and self.sideToMove == self.WHITE_TO_MOVE) or
                        (piece == self.B_ROOK and self.sideToMove == self.BLACK_TO_MOVE) then
-                    self:generateRookMoves(file, rank, self.sideToMove, moves)
+                    self:generateRookMoves(rank, file, self.sideToMove, moves)
                 elseif (piece == self.W_QUEEN and self.sideToMove == self.WHITE_TO_MOVE) or
                        (piece == self.B_QUEEN and self.sideToMove == self.BLACK_TO_MOVE) then
-                    self:generateQueenMoves(file, rank, self.sideToMove, moves)
+                    self:generateQueenMoves(rank, file, self.sideToMove, moves)
                 elseif (piece == self.W_KING and self.sideToMove == self.WHITE_TO_MOVE) or
                        (piece == self.B_KING and self.sideToMove == self.BLACK_TO_MOVE) then
-                    self:generateKingMoves(file, rank, self.sideToMove, moves)
+                    self:generateKingMoves(rank, file, self.sideToMove, moves)
                 end
             end
         end
@@ -390,23 +357,23 @@ end
 
 function Board:findKing(side)
     local king = side == self.WHITE_TO_MOVE and self.W_KING or self.B_KING
-    for file = self.FILE_A, self.FILE_H do
-        for rank = self.RANK_1, self.RANK_8 do
-            if self.mailbox[file][rank] == king then
-                return file, rank
+    for rank = self.RANK_1, self.RANK_8 do
+        for file = self.FILE_A, self.FILE_H do
+            if self.mailbox[rank][file] == king then
+                return rank, file
             end
         end
     end
     return nil, nil
 end
 
-function Board:isSquareAttacked(file, rank, side)
+function Board:isSquareAttacked(rank, file, side)
     -- Verificar ataques de los caballos
     for _, offset in ipairs(self.KNIGHT_MOVES) do
-        local attackerFile = file + offset[1]
-        local attackerRank = rank + offset[2]
-        if self:isInsideBoard(attackerFile, attackerRank) then
-            local attackerPiece = self.mailbox[attackerFile][attackerRank]
+        local attackerRank = rank + offset[1]
+        local attackerFile = file + offset[2]
+        if self:isInsideBoard(attackerRank, attackerFile) then
+            local attackerPiece = self.mailbox[attackerRank][attackerFile]
             if attackerPiece == (side == self.WHITE_TO_MOVE and self.B_KNIGHT or self.W_KNIGHT) then
                 return true
             end
@@ -414,13 +381,13 @@ function Board:isSquareAttacked(file, rank, side)
     end
 
     -- Verificar ataques diagonales (alfiles y damas)
-    for fileDirection = -1, 1, 2 do
-        for rankDirection = -1, 1, 2 do
-            for distance = 1, 8 do
-                local attackerFile = file + distance * fileDirection
+    for rankDirection = -1, 1, 2 do
+        for fileDirection = -1, 1, 2 do
+            for distance = 1, 8 do -- #TODO: Posiblemente solo sea necesario hasta 7, verificar luego
                 local attackerRank = rank + distance * rankDirection
-                if self:isInsideBoard(attackerFile, attackerRank) then
-                    local attackerPiece = self.mailbox[attackerFile][attackerRank]
+                local attackerFile = file + distance * fileDirection
+                if self:isInsideBoard(attackerRank, attackerFile) then
+                    local attackerPiece = self.mailbox[attackerRank][attackerFile]
                     if attackerPiece == (side == self.WHITE_TO_MOVE and self.B_BISHOP or self.W_BISHOP)
                             or attackerPiece == (side == self.WHITE_TO_MOVE and self.B_QUEEN or self.W_QUEEN) then
                         return true
@@ -435,46 +402,56 @@ function Board:isSquareAttacked(file, rank, side)
     end
 
     -- Verificar ataques horizontales y verticales (torres y damas)
+    -- Movimientos horizontales
     for direction = -1, 1, 2 do
-        for _, axis in ipairs({self.FILE_A, self.RANK_1}) do
-            for distance = 1, 8 do
-                local attackerFile = file + distance * direction * (axis == self.FILE_A and 1 or 0)
-                local attackerRank = rank + distance * direction * (axis == self.RANK_1 and 1 or 0)
-                if self:isInsideBoard(attackerFile, attackerRank) then
-                    local attackerPiece = self.mailbox[attackerFile][attackerRank]
-                    if attackerPiece == (side == self.WHITE_TO_MOVE and self.B_ROOK or self.W_ROOK)
-                            or attackerPiece == (side == self.WHITE_TO_MOVE and self.B_QUEEN or self.W_QUEEN) then
-                        return true
-                    elseif attackerPiece ~= self.EMPTY then
-                        break
-                    end
-                else
-                    break
-                end
+        local newFile = file + direction
+        while self:isInsideBoard(rank, newFile) do
+            local attackerPiece = self.mailbox[rank][newFile]
+            if attackerPiece == (side == self.WHITE_TO_MOVE and self.B_ROOK or self.W_ROOK)
+                    or attackerPiece == (side == self.WHITE_TO_MOVE and self.B_QUEEN or self.W_QUEEN) then
+                return true
+            elseif attackerPiece ~= self.EMPTY  then
+                break
+            end
+            newFile = newFile + direction
+        end
+    end
+
+    -- Movimientos verticales
+    for direction = -1, 1, 2 do
+        local newRank = rank + direction
+        while self:isInsideBoard(newRank, file) do
+            local attackerPiece = self.mailbox[newRank][file]
+            if attackerPiece == (side == self.WHITE_TO_MOVE and self.B_ROOK or self.W_ROOK)
+                    or attackerPiece == (side == self.WHITE_TO_MOVE and self.B_QUEEN or self.W_QUEEN) then
+                return true
+            elseif attackerPiece ~= self.EMPTY  then
+                break
+            end
+            newRank = newRank + direction
+        end
+    end
+
+    -- Verificar ataques de los peones
+    local pawnDirection = side == self.WHITE_TO_MOVE and 1 or -1
+    for _, offset in ipairs({1,-1}) do
+        local attackerRank = rank + pawnDirection
+        local attackerFile = file + offset
+        if self:isInsideBoard(attackerRank, attackerFile) then
+            local attackerPiece = self.mailbox[attackerRank][attackerFile]
+            if attackerPiece == (side == self.WHITE_TO_MOVE and self.B_PAWN or self.W_PAWN) then
+                return true
             end
         end
     end
 
     -- Verificar ataques del rey
     for _, offset in ipairs(self.KING_MOVES) do
-        local attackerFile = file + offset[1]
-        local attackerRank = rank + offset[2]
-        if self:isInsideBoard(attackerFile, attackerRank) then
-            local attackerPiece = self.mailbox[attackerFile][attackerRank]
+        local attackerRank = rank + offset[1]
+        local attackerFile = file + offset[2]
+        if self:isInsideBoard(attackerRank, attackerFile) then
+            local attackerPiece = self.mailbox[attackerRank][attackerFile]
             if attackerPiece == (side == self.WHITE_TO_MOVE and self.B_KING or self.W_KING) then
-                return true
-            end
-        end
-    end
-
-    -- Verificar ataques de los peones
-    local pawnDirection = side == self.WHITE_TO_MOVE and 1 or -1
-    for _, offset in ipairs({{1, pawnDirection}, {-1, pawnDirection}}) do
-        local attackerFile = file + offset[1]
-        local attackerRank = rank + offset[2]
-        if self:isInsideBoard(attackerFile, attackerRank) then
-            local attackerPiece = self.mailbox[attackerFile][attackerRank]
-            if attackerPiece == (side == self.WHITE_TO_MOVE and self.B_PAWN or self.W_PAWN) then
                 return true
             end
         end
@@ -484,8 +461,8 @@ function Board:isSquareAttacked(file, rank, side)
 end
 
 function Board:makeMove(move)
-    local fromFile, fromRank, toFile, toRank, flags = unpack(move)
-    local capturedPiece = self.mailbox[toFile][toRank]
+    local fromRank, fromFile, toRank, toFile, flags = unpack(move)
+    local capturedPiece = self.mailbox[toRank][toFile]
 
     -- Guardar información para deshacer el movimiento
     local undo = {
@@ -497,38 +474,38 @@ function Board:makeMove(move)
 
     -- Actualizar enPassantSquare
     if flags == self.FLAG_DOUBLE_PAWN_PUSH then
-        self.enPassantSquare = string.char(fromFile + string.byte("a") - 1) .. tostring((fromRank + toRank) / 2)
+        self.enPassantSquare = {(fromRank+toRank)/2, fromFile}
     else
-        self.enPassantSquare = ""
+        self.enPassantSquare = {0,0}
     end
 
     -- Actualizar halfMoveClock
-    if capturedPiece ~= self.EMPTY or flags == self.FLAG_PAWN_MOVE then
+    if capturedPiece ~= self.EMPTY or flags == self.FLAG_PAWN_MOVE then --#TODO agregar FLAG_PAWN_MOVE
         self.halfMoveClock = 0
     else
         self.halfMoveClock = self.halfMoveClock + 1
     end
 
     -- Realizar el movimiento
-    self.mailbox[toFile][toRank] = self.mailbox[fromFile][fromRank]
-    self.mailbox[fromFile][fromRank] = self.EMPTY
+    self.mailbox[toRank][toFile] = self.mailbox[fromRank][fromFile]
+    self.mailbox[fromRank][fromFile] = self.EMPTY
 
-    -- Actualizar castlingRights y enPassantSquare para enroques
+    -- Actualizar enroques
     if flags == self.FLAG_KING_CASTLE then
         if self.sideToMove == self.WHITE_TO_MOVE then
-            self.mailbox[self.FILE_G][self.RANK_1] = self.EMPTY
-            self.mailbox[self.FILE_F][self.RANK_1] = self.W_ROOK
+            self.mailbox[self.RANK_1][self.FILE_H] = self.EMPTY
+            self.mailbox[self.RANK_1][self.FILE_F] = self.W_ROOK
         else
-            self.mailbox[self.FILE_G][self.RANK_8] = self.EMPTY
-            self.mailbox[self.FILE_F][self.RANK_8] = self.B_ROOK
+            self.mailbox[self.RANK_8][self.FILE_H] = self.EMPTY
+            self.mailbox[self.RANK_8][self.FILE_F] = self.B_ROOK
         end
     elseif flags == self.FLAG_QUEEN_CASTLE then
         if self.sideToMove == self.WHITE_TO_MOVE then
-            self.mailbox[self.FILE_C][self.RANK_1] = self.EMPTY
-            self.mailbox[self.FILE_D][self.RANK_1] = self.W_ROOK
+            self.mailbox[self.RANK_1][self.FILE_A] = self.EMPTY
+            self.mailbox[self.RANK_1][self.FILE_D] = self.W_ROOK
         else
-            self.mailbox[self.FILE_C][self.RANK_8] = self.EMPTY
-            self.mailbox[self.FILE_D][self.RANK_8] = self.B_ROOK
+            self.mailbox[self.RANK_8][self.FILE_A] = self.EMPTY
+            self.mailbox[self.RANK_8][self.FILE_D] = self.B_ROOK
         end
     end
 
@@ -539,11 +516,11 @@ function Board:makeMove(move)
 end
 
 function Board:unmakeMove(move, undo)
-    local fromFile, fromRank, toFile, toRank, flags = unpack(move)
+    local fromRank, fromFile, toRank, toFile, flags = unpack(move)
 
     -- Deshacer el movimiento
-    self.mailbox[fromFile][fromRank] = self.mailbox[toFile][toRank]
-    self.mailbox[toFile][toRank] = undo.capturedPiece
+    self.mailbox[fromRank][fromFile] = self.mailbox[toRank][toFile]
+    self.mailbox[toRank][toFile] = undo.capturedPiece
 
     -- Restaurar enPassantSquare, castlingRights y halfMoveClock
     self.enPassantSquare = undo.enPassantSquare
@@ -556,39 +533,21 @@ function Board:unmakeMove(move, undo)
     -- Restaurar enroques
     if flags == self.FLAG_KING_CASTLE then
         if self.sideToMove == self.WHITE_TO_MOVE then
-            self.mailbox[self.FILE_G][self.RANK_1] = self.W_KING
-            self.mailbox[self.FILE_F][self.RANK_1] = self.EMPTY
+            self.mailbox[self.RANK_1][self.FILE_H] = self.W_ROOK
+            self.mailbox[self.RANK_1][self.FILE_F] = self.EMPTY
         else
-            self.mailbox[self.FILE_G][self.RANK_8] = self.B_KING
-            self.mailbox[self.FILE_F][self.RANK_8] = self.EMPTY
+            self.mailbox[self.RANK_8][self.FILE_H] = self.B_ROOK
+            self.mailbox[self.RANK_8][self.FILE_F] = self.EMPTY
         end
     elseif flags == self.FLAG_QUEEN_CASTLE then
         if self.sideToMove == self.WHITE_TO_MOVE then
-            self.mailbox[self.FILE_C][self.RANK_1] = self.W_KING
-            self.mailbox[self.FILE_D][self.RANK_1] = self.EMPTY
+            self.mailbox[self.RANK_1][self.FILE_A] = self.W_ROOK
+            self.mailbox[self.RANK_1][self.FILE_D] = self.EMPTY
         else
-            self.mailbox[self.FILE_C][self.RANK_8] = self.B_KING
-            self.mailbox[self.FILE_D][self.RANK_8] = self.EMPTY
+            self.mailbox[self.RANK_8][self.FILE_A] = self.B_ROOK
+            self.mailbox[self.RANK_8][self.FILE_D] = self.EMPTY
         end
     end
-end
-
-function Board:isLegalMove(move)
-    local fromFile, fromRank, toFile, toRank, flags = unpack(move)
-    local piece = self.mailbox[fromFile][fromRank]
-    local capturedPiece = self.mailbox[toFile][toRank]
-
-    -- Realizar el movimiento temporalmente
-    local undo = self:makeMove(move)
-
-    -- Verificar si el rey está bajo ataque
-    local kingFile, kingRank = self:findKing(self.sideToMove)
-    local isLegal = not self:isSquareAttacked(kingFile, kingRank, not self.sideToMove)
-
-    -- Deshacer el movimiento
-    self:unmakeMove(move, undo)
-
-    return isLegal
 end
 
 function Board:perft(depth)
@@ -599,18 +558,16 @@ function Board:perft(depth)
     local moves = self:generatePseudoLegalMoves()
     local nodes = 0
     local sideToMove = self.sideToMove
+    local isCheckMate = true
     for _, move in ipairs(moves) do
         local undo = self:makeMove(move)
         -- Verificar que el rey enemigo no está en jaque
-        local kingFile, kingRank = self:findKing(sideToMove)
-        local isLegal = not self:isSquareAttacked(kingFile, kingRank, sideToMove)
+        local kingRank, kingFile = self:findKing(sideToMove)
+        local isLegal = not self:isSquareAttacked(kingRank, kingFile, sideToMove)
         -- Si la posición es Legal se suma el nodo
         if isLegal then
-            local kfile, krank = self:findKing(self.sideToMove)
-            
             nodes = nodes + self:perft(depth - 1)
         end
-
         self:unmakeMove(move, undo)
     end
 
