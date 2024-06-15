@@ -61,7 +61,7 @@ local Board = {
     -- Atributos
     mailbox = {},
     sideToMove = true,
-    castlingRights = "-",
+    castlingRights = {false,false,false,false},
     enPassantSquare = {0,0},
     halfMoveClock = 0,
     fullMoveNumber = 0
@@ -145,7 +145,12 @@ function Board:parseFEN(fen)
     end
     local piecePlacement = parts[1]
     self.sideToMove = parts[2] == "w" and true or false
-    self.castlingRights = parts[3]
+
+    if parts[3]:find("K") then self.castlingRights[1] = true end  -- Enroque corto blanco
+    if parts[3]:find("Q") then self.castlingRights[2] = true end  -- Enroque largo blanco
+    if parts[3]:find("k") then self.castlingRights[3] = true end  -- Enroque corto negro
+    if parts[3]:find("q") then self.castlingRights[4] = true end  -- Enroque largo negro
+
     self.enPassantSquare = self:convertSquareToCoords(parts[4])
     self.halfMoveClock = parts[5] == nil and 0 or tonumber(parts[5])
     self.fullMoveNumber = parts[6] == nil and 0 or tonumber(parts[6])
@@ -323,7 +328,50 @@ function Board:generateKingMoves(rank, file, side, moves)
             end
         end
     end
-    -- #TODO: Agregar movimientos de enroque, solo mover al rey
+    -- Agregar movimientos de enroque
+    if side == self.WHITE_TO_MOVE then
+        if self.castlingRights[1] then -- Enroque corto blanco
+            if self.mailbox[self.RANK_1][self.FILE_F] == self.EMPTY and
+               self.mailbox[self.RANK_1][self.FILE_G] == self.EMPTY and
+               not self:isSquareAttacked(self.RANK_1, self.FILE_E, self.sideToMove) and
+               not self:isSquareAttacked(self.RANK_1, self.FILE_F, self.sideToMove) and
+               not self:isSquareAttacked(self.RANK_1, self.FILE_G, self.sideToMove) then
+                table.insert(moves, {rank, file, self.RANK_1, self.FILE_G, self.FLAG_KING_CASTLE})
+            end
+        end
+
+        if self.castlingRights[2] then -- Enroque largo blanco
+            if self.mailbox[self.RANK_1][self.FILE_D] == self.EMPTY and
+               self.mailbox[self.RANK_1][self.FILE_C] == self.EMPTY and
+               self.mailbox[self.RANK_1][self.FILE_B] == self.EMPTY and
+               not self:isSquareAttacked(self.RANK_1, self.FILE_E, self.sideToMove) and
+               not self:isSquareAttacked(self.RANK_1, self.FILE_D, self.sideToMove) and
+               not self:isSquareAttacked(self.RANK_1, self.FILE_C, self.sideToMove) then
+                table.insert(moves, {rank, file, self.RANK_1, self.FILE_C, self.FLAG_QUEEN_CASTLE})
+            end
+        end
+    else
+        if self.castlingRights[3] then -- Enroque corto negro
+            if self.mailbox[self.RANK_8][self.FILE_F] == self.EMPTY and
+               self.mailbox[self.RANK_8][self.FILE_G] == self.EMPTY and
+               not self:isSquareAttacked(self.RANK_8, self.FILE_E, self.sideToMove) and
+               not self:isSquareAttacked(self.RANK_8, self.FILE_F, self.sideToMove) and
+               not self:isSquareAttacked(self.RANK_8, self.FILE_G, self.sideToMove) then
+                table.insert(moves, {rank, file, self.RANK_8, self.FILE_G, self.FLAG_KING_CASTLE})
+            end
+        end
+
+        if self.castlingRights[4] then -- Enroque largo negro
+            if self.mailbox[self.RANK_8][self.FILE_D] == self.EMPTY and
+               self.mailbox[self.RANK_8][self.FILE_C] == self.EMPTY and
+               self.mailbox[self.RANK_8][self.FILE_B] == self.EMPTY and
+               not self:isSquareAttacked(self.RANK_8, self.FILE_E, self.sideToMove) and
+               not self:isSquareAttacked(self.RANK_8, self.FILE_D, self.sideToMove) and
+               not self:isSquareAttacked(self.RANK_8, self.FILE_C, self.sideToMove) then
+                table.insert(moves, {rank, file, self.RANK_8, self.FILE_C, self.FLAG_QUEEN_CASTLE})
+            end
+        end
+    end
 end
 
 function Board:generatePseudoLegalMoves()
@@ -470,19 +518,19 @@ function Board:makeMove(move)
     local undo = {
         capturedPiece = capturedPiece,
         enPassantSquare = self.enPassantSquare,
-        castlingRights = self.castlingRights,
+        castlingRights = {unpack(self.castlingRights)},
         halfMoveClock = self.halfMoveClock
     }
 
     -- Actualizar enPassantSquare
     if flags == self.FLAG_DOUBLE_PAWN_PUSH then
-        self.enPassantSquare = {(fromRank+toRank)/2, fromFile}
+        self.enPassantSquare = {(fromRank + toRank) / 2, fromFile}
     else
-        self.enPassantSquare = {0,0}
+        self.enPassantSquare = {0, 0}
     end
 
     -- Actualizar halfMoveClock
-    if capturedPiece ~= self.EMPTY or flags == self.FLAG_PAWN_MOVE then --#TODO agregar FLAG_PAWN_MOVE
+    if capturedPiece ~= self.EMPTY or self.mailbox[fromRank][fromFile] == self.W_PAWN or self.mailbox[fromRank][fromFile] == self.B_PAWN then
         self.halfMoveClock = 0
     else
         self.halfMoveClock = self.halfMoveClock + 1
@@ -517,11 +565,31 @@ function Board:makeMove(move)
         end
     end
 
+    -- Actualizar derechos de enroque
+    if self.mailbox[toRank][toFile] == self.W_KING then
+        self.castlingRights[1] = false
+        self.castlingRights[2] = false
+    elseif self.mailbox[toRank][toFile] == self.B_KING then
+        self.castlingRights[3] = false
+        self.castlingRights[4] = false
+    elseif self.mailbox[fromRank][fromFile] == self.W_ROOK then
+        if fromRank == self.RANK_1 then
+            if fromFile == self.FILE_H then self.castlingRights[1] = false end
+            if fromFile == self.FILE_A then self.castlingRights[2] = false end
+        end
+    elseif self.mailbox[fromRank][fromFile] == self.B_ROOK then
+        if fromRank == self.RANK_8 then
+            if fromFile == self.FILE_H then self.castlingRights[3] = false end
+            if fromFile == self.FILE_A then self.castlingRights[4] = false end
+        end
+    end
+
     -- Cambiar el lado que mueve
     self.sideToMove = not self.sideToMove
 
     return undo
 end
+
 
 function Board:unmakeMove(move, undo)
     local fromRank, fromFile, toRank, toFile, flags = unpack(move)
@@ -538,7 +606,7 @@ function Board:unmakeMove(move, undo)
 
     -- Restaurar enPassantSquare, castlingRights y halfMoveClock
     self.enPassantSquare = undo.enPassantSquare
-    self.castlingRights = undo.castlingRights
+    self.castlingRights = {unpack(undo.castlingRights)}
     self.halfMoveClock = undo.halfMoveClock
 
     -- Restaurar lado que mueve
