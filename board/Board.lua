@@ -94,6 +94,7 @@ function Board:convertSquareToCoords(square)
 end
 
 function Board:print()
+    local map = ""
     local PIECE_SYMBOLS = {
         [self.W_PAWN] = "P",
         [self.W_KNIGHT] = "N",
@@ -107,16 +108,17 @@ function Board:print()
         [self.B_ROOK] = "r",
         [self.B_QUEEN] = "q",
         [self.B_KING] = "k",
-        [self.EMPTY] = "."  -- Assuming you have a value for empty squares
+        [self.EMPTY] = "."
     }
 
     for rank = self.RANK_8, self.RANK_1, -1 do
         for file = self.FILE_A, self.FILE_H do
             local piece = self.mailbox[rank][file]
-            io.write(PIECE_SYMBOLS[piece] or ".", " ")  -- Print the piece symbol or "." for empty squares
+            map = map .. (PIECE_SYMBOLS[piece] or ".") .. " "
         end
-        io.write("\n")
+        map = map .."\n"
     end
+    io.write(map)
 end
 
 function Board:parseFEN(fen)
@@ -207,7 +209,7 @@ function Board:generatePawnMoves(rank, file, side, moves)
     end
 
     -- Captura en diagonal derecha
-    if self:isInsideBoard(rank + 1, file + direction) and self:isEnemyPiece(rank + 1, file + direction, side) then
+    if self:isInsideBoard(rank + direction, file + 1) and self:isEnemyPiece(rank + direction, file + 1, side) then
         if rank + direction == promotionRank then
             for _, flag in ipairs(self.CAPTURE_PROMOTION_FLAGS) do
                 table.insert(moves, {rank, file, rank + direction, file + 1, flag})
@@ -220,7 +222,7 @@ function Board:generatePawnMoves(rank, file, side, moves)
     -- Captura al paso (en passant)
     if self.enPassantSquare[1] ~= 0 then
         local epRank, epFile = unpack(self.enPassantSquare)
-        if file == (side == self.WHITE_TO_MOVE and self.RANK_5 or self.RANK_4) and
+        if rank == (side == self.WHITE_TO_MOVE and self.RANK_5 or self.RANK_4) and
             (file - 1 == epFile or file + 1 == epFile) and epRank == rank + direction then
             table.insert(moves, {rank, file, epRank, epFile, self.FLAG_EP_CAPTURE})
         end
@@ -490,6 +492,12 @@ function Board:makeMove(move)
     self.mailbox[toRank][toFile] = self.mailbox[fromRank][fromFile]
     self.mailbox[fromRank][fromFile] = self.EMPTY
 
+    -- Capturas al paso
+    if flags == self.FLAG_EN_PASSANT then
+        local captureRank = self.sideToMove == self.WHITE_TO_MOVE and toRank - 1 or toRank + 1
+        self.mailbox[captureRank][toFile] = self.EMPTY
+    end
+
     -- Actualizar enroques
     if flags == self.FLAG_KING_CASTLE then
         if self.sideToMove == self.WHITE_TO_MOVE then
@@ -521,6 +529,12 @@ function Board:unmakeMove(move, undo)
     -- Deshacer el movimiento
     self.mailbox[fromRank][fromFile] = self.mailbox[toRank][toFile]
     self.mailbox[toRank][toFile] = undo.capturedPiece
+
+    -- Restaurar capturas al paso
+    if flags == self.FLAG_EN_PASSANT then
+        local captureRank = self.sideToMove == self.WHITE_TO_MOVE and toRank - 1 or toRank + 1
+        self.mailbox[captureRank][toFile] = self.sideToMove == self.WHITE_TO_MOVE and self.B_PAWN or self.W_PAWN
+    end
 
     -- Restaurar enPassantSquare, castlingRights y halfMoveClock
     self.enPassantSquare = undo.enPassantSquare
@@ -566,6 +580,7 @@ function Board:perft(depth)
         local isLegal = not self:isSquareAttacked(kingRank, kingFile, sideToMove)
         -- Si la posición es Legal se suma el nodo
         if isLegal then
+            --print(move[1],move[2],move[3],move[4])
             nodes = nodes + self:perft(depth - 1)
         end
         self:unmakeMove(move, undo)
