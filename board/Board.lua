@@ -122,6 +122,13 @@ function Board:print()
 end
 
 function Board:parseFEN(fen)
+    -- reset
+    self:initializeMailbox()
+    self.castlingRights = {false,false,false,false}
+    self.enPassantSquare = {0,0}
+    self.halfMoveClock = 0
+    self.fullMoveNumber = 0
+
     local PIECES = {
         ["P"] = self.W_PAWN,  -- White Pawn
         ["N"] = self.W_KNIGHT,  -- White Knight
@@ -537,11 +544,25 @@ function Board:makeMove(move)
     end
 
     -- Realizar el movimiento
-    self.mailbox[toRank][toFile] = self.mailbox[fromRank][fromFile]
+    if flags >= self.FLAG_KNIGHT_PROMOTION and flags <= self.FLAG_QUEEN_PROMOTION_CAPTURE then
+        local promotionPiece
+        if flags == self.FLAG_KNIGHT_PROMOTION or flags == self.FLAG_KNIGHT_PROMOTION_CAPTURE then
+            promotionPiece = self.sideToMove == self.WHITE_TO_MOVE and self.W_KNIGHT or self.B_KNIGHT
+        elseif flags == self.FLAG_BISHOP_PROMOTION or flags == self.FLAG_BISHOP_PROMOTION_CAPTURE then
+            promotionPiece = self.sideToMove == self.WHITE_TO_MOVE and self.W_BISHOP or self.B_BISHOP
+        elseif flags == self.FLAG_ROOK_PROMOTION or flags == self.FLAG_ROOK_PROMOTION_CAPTURE then
+            promotionPiece = self.sideToMove == self.WHITE_TO_MOVE and self.W_ROOK or self.B_ROOK
+        elseif flags == self.FLAG_QUEEN_PROMOTION or flags == self.FLAG_QUEEN_PROMOTION_CAPTURE then
+            promotionPiece = self.sideToMove == self.WHITE_TO_MOVE and self.W_QUEEN or self.B_QUEEN
+        end
+        self.mailbox[toRank][toFile] = promotionPiece
+    else
+        self.mailbox[toRank][toFile] = self.mailbox[fromRank][fromFile]
+    end
     self.mailbox[fromRank][fromFile] = self.EMPTY
 
     -- Capturas al paso
-    if flags == self.FLAG_EN_PASSANT then
+    if flags == self.FLAG_EP_CAPTURE then
         local captureRank = self.sideToMove == self.WHITE_TO_MOVE and toRank - 1 or toRank + 1
         self.mailbox[captureRank][toFile] = self.EMPTY
     end
@@ -594,12 +615,19 @@ end
 function Board:unmakeMove(move, undo)
     local fromRank, fromFile, toRank, toFile, flags = unpack(move)
 
+    -- Restaurar lado que mueve
+    self.sideToMove = not self.sideToMove
+
     -- Deshacer el movimiento
-    self.mailbox[fromRank][fromFile] = self.mailbox[toRank][toFile]
+    if flags >= self.FLAG_KNIGHT_PROMOTION and flags <= self.FLAG_QUEEN_PROMOTION_CAPTURE then
+        self.mailbox[fromRank][fromFile] = self.sideToMove == self.WHITE_TO_MOVE and self.W_PAWN or self.B_PAWN
+    else
+        self.mailbox[fromRank][fromFile] = self.mailbox[toRank][toFile]
+    end
     self.mailbox[toRank][toFile] = undo.capturedPiece
 
     -- Restaurar capturas al paso
-    if flags == self.FLAG_EN_PASSANT then
+    if flags == self.FLAG_EP_CAPTURE then
         local captureRank = self.sideToMove == self.WHITE_TO_MOVE and toRank - 1 or toRank + 1
         self.mailbox[captureRank][toFile] = self.sideToMove == self.WHITE_TO_MOVE and self.B_PAWN or self.W_PAWN
     end
@@ -608,9 +636,6 @@ function Board:unmakeMove(move, undo)
     self.enPassantSquare = undo.enPassantSquare
     self.castlingRights = {unpack(undo.castlingRights)}
     self.halfMoveClock = undo.halfMoveClock
-
-    -- Restaurar lado que mueve
-    self.sideToMove = not self.sideToMove
 
     -- Restaurar enroques
     if flags == self.FLAG_KING_CASTLE then
@@ -648,7 +673,7 @@ function Board:perft(depth)
         local isLegal = not self:isSquareAttacked(kingRank, kingFile, sideToMove)
         -- Si la posición es Legal se suma el nodo
         if isLegal then
-            --print(move[1],move[2],move[3],move[4])
+            --print(move[1],move[2],move[3],move[4],move[5])
             nodes = nodes + self:perft(depth - 1)
         end
         self:unmakeMove(move, undo)
