@@ -22,7 +22,7 @@ local test_cases = {
             {depth = 2, result = 400},
             {depth = 3, result = 8902},
             {depth = 4, result = 197281},
-            -- {depth = 5, result = 4865609},
+            {depth = 5, result = 4865609},
         }
     },
     {
@@ -32,7 +32,7 @@ local test_cases = {
             {depth = 1, result = 48},
             {depth = 2, result = 2039},
             {depth = 3, result = 97862},
-            -- {depth = 4, result = 4085603},
+            {depth = 4, result = 4085603},
         }
     },
     {
@@ -73,7 +73,7 @@ local test_cases = {
             {depth = 1, result = 44},
             {depth = 2, result = 1486},
             {depth = 3, result = 62379},
-            --{depth = 4, result = 2103487},
+            {depth = 4, result = 2103487},
         }
     },
     {
@@ -83,14 +83,7 @@ local test_cases = {
             {depth = 1, result = 46},
             {depth = 2, result = 2079},
             {depth = 3, result = 89890},
-            --{depth = 4, result = 3894594},
-        }
-    },
-    {
-        description = "--- Prueba de personalizada ---",
-        fen = "8/2p5/3p4/KP5r/1R2Pp1k/8/6P1/8 b - - 0 1",
-        tests = {
-            {depth = 1, result = 16}
+            {depth = 4, result = 3894594},
         }
     },
 }

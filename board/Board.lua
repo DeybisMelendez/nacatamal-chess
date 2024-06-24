@@ -186,7 +186,7 @@ end
 
 function Board:isEnemyPiece(rank, file, side)
     local piece = self.mailbox[rank][file]
-    return (side == self.WHITE_TO_MOVE and piece < self.EMPTY) or (side == self.BLACK_TO_MOVE and piece > self.EMPTY)
+    return (side == self.WHITE_TO_MOVE and piece < self.EMPTY) or (side == self.BLACK_TO_MOVE and piece > self.EMPTY and piece < self.OUT)
 end
 
 function Board:generatePawnMoves(rank, file, side, moves)
@@ -280,7 +280,7 @@ function Board:generateBishopMoves(rank, file, side, moves)
 end
 
 function Board:generateRookMoves(rank, file, side,moves)
-    -- Movimientos verticales (arriba y abajo)
+    -- Movimientos horizontales (izquierda y derecha)
     for direction = -1, 1, 2 do
         local newFile = file + direction
         while self:isInsideBoard(rank, newFile) do
@@ -296,7 +296,7 @@ function Board:generateRookMoves(rank, file, side,moves)
         end
     end
 
-    -- Movimientos horizontales (izquierda y derecha)
+    -- Movimientos verticales (arriba y abajo)
     for direction = -1, 1, 2 do
         local newRank = rank + direction
         while self:isInsideBoard(newRank, file) do
@@ -524,7 +524,7 @@ function Board:makeMove(move)
     -- Guardar información para deshacer el movimiento
     local undo = {
         capturedPiece = capturedPiece,
-        enPassantSquare = self.enPassantSquare,
+        enPassantSquare = {unpack(self.enPassantSquare)},
         castlingRights = {unpack(self.castlingRights)},
         halfMoveClock = self.halfMoveClock
     }
@@ -593,15 +593,25 @@ function Board:makeMove(move)
     elseif self.mailbox[toRank][toFile] == self.B_KING then
         self.castlingRights[3] = false
         self.castlingRights[4] = false
-    elseif self.mailbox[fromRank][fromFile] == self.W_ROOK then
+    elseif self.mailbox[toRank][toFile] == self.W_ROOK then
         if fromRank == self.RANK_1 then
             if fromFile == self.FILE_H then self.castlingRights[1] = false end
             if fromFile == self.FILE_A then self.castlingRights[2] = false end
         end
-    elseif self.mailbox[fromRank][fromFile] == self.B_ROOK then
+    elseif self.mailbox[toRank][toFile] == self.B_ROOK then
         if fromRank == self.RANK_8 then
             if fromFile == self.FILE_H then self.castlingRights[3] = false end
             if fromFile == self.FILE_A then self.castlingRights[4] = false end
+        end
+    elseif capturedPiece == self.W_ROOK and self.sideToMove == self.BLACK_TO_MOVE then
+        if toRank == self.RANK_1 then
+            if toFile == self.FILE_H then self.castlingRights[1] = false end
+            if toFile == self.FILE_A then self.castlingRights[2] = false end
+        end
+    elseif capturedPiece == self.B_ROOK and self.sideToMove == self.WHITE_TO_MOVE then
+        if toRank == self.RANK_8 then
+            if toFile == self.FILE_H then self.castlingRights[3] = false end
+            if toFile == self.FILE_A then self.castlingRights[4] = false end
         end
     end
 
@@ -633,7 +643,7 @@ function Board:unmakeMove(move, undo)
     end
 
     -- Restaurar enPassantSquare, castlingRights y halfMoveClock
-    self.enPassantSquare = undo.enPassantSquare
+    self.enPassantSquare = {unpack(undo.enPassantSquare)}
     self.castlingRights = {unpack(undo.castlingRights)}
     self.halfMoveClock = undo.halfMoveClock
 
@@ -665,8 +675,15 @@ function Board:perft(depth)
     local moves = self:generatePseudoLegalMoves()
     local nodes = 0
     local sideToMove = self.sideToMove
-    local isCheckMate = true
+    --local isCheckMate = true
     for _, move in ipairs(moves) do
+        --[[local oldPosition = {}
+        for i,r in ipairs(self.mailbox) do
+            oldPosition[i] = {}
+            for _, f in ipairs(r) do
+                table.insert(oldPosition[i],f)
+            end
+        end]]
         local undo = self:makeMove(move)
         -- Verificar que el rey enemigo no está en jaque
         local kingRank, kingFile = self:findKing(sideToMove)
@@ -676,7 +693,19 @@ function Board:perft(depth)
             --print(move[1],move[2],move[3],move[4],move[5])
             nodes = nodes + self:perft(depth - 1)
         end
+        --self:print()
         self:unmakeMove(move, undo)
+        --[[for i,r in ipairs(self.mailbox) do
+            for j, _ in ipairs(r) do
+                if not(self.mailbox[i][j] == oldPosition[i][j]) then
+                   print("unmake falló")
+                   self:print()
+                   print(move[1],move[2],move[3],move[4],move[5])
+                   print("Error en:",self.mailbox[i][j], "Se esperaba:",oldPosition[i][j], "En:",i,j)
+                   return
+                end
+            end
+        end]]
     end
 
     return nodes
