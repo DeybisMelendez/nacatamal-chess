@@ -2,11 +2,12 @@ local board = require "board.Board"
 
 local function run_perft_tests(fen, tests)
     board:parseFEN(fen)
+    local time = os.clock()
     for _, test in ipairs(tests) do
         local depth, expected_result = test.depth, test.result
         local result = board:perft(depth)
         if result == expected_result then
-            print("La profundidad " .. depth .. " se ha realizado con éxito")
+            print("La profundidad " .. depth .. " se ha realizado con éxito, nps = ".. math.floor(result/(os.clock() - time)))
         else
             print("Error en la profundidad " .. depth .. ", se esperaba:", expected_result, "pero se obtuvo:", result)
         end
@@ -23,6 +24,7 @@ local test_cases = {
             {depth = 3, result = 8902},
             {depth = 4, result = 197281},
             {depth = 5, result = 4865609},
+            --{depth = 6, result = 119060324 }
         }
     },
     {
