@@ -18,22 +18,22 @@ local Board = {
     B_KING = -6,
     OUT = 7,
     -- Filas y Columnas
-    FILE_A = 3,
-    FILE_B = 4,
-    FILE_C = 5,
-    FILE_D = 6,
-    FILE_E = 7,
-    FILE_F = 8,
-    FILE_G = 9,
-    FILE_H = 10,
-    RANK_1 = 3,
-    RANK_2 = 4,
-    RANK_3 = 5,
-    RANK_4 = 6,
-    RANK_5 = 7,
-    RANK_6 = 8,
-    RANK_7 = 9,
-    RANK_8 = 10,
+    FILE_A = 1,
+    FILE_B = 2,
+    FILE_C = 3,
+    FILE_D = 4,
+    FILE_E = 5,
+    FILE_F = 6,
+    FILE_G = 7,
+    FILE_H = 8,
+    RANK_1 = 1,
+    RANK_2 = 2,
+    RANK_3 = 3,
+    RANK_4 = 4,
+    RANK_5 = 5,
+    RANK_6 = 6,
+    RANK_7 = 7,
+    RANK_8 = 8,
     -- Patrones
     KNIGHT_MOVES = {
         {2, 1}, {2, -1}, {-2, 1}, {-2, -1},
@@ -71,15 +71,10 @@ Board.PROMOTION_FLAGS = {Board.FLAG_QUEEN_PROMOTION, Board.FLAG_ROOK_PROMOTION, 
 Board.CAPTURE_PROMOTION_FLAGS = {Board.FLAG_QUEEN_PROMOTION_CAPTURE, Board.FLAG_ROOK_PROMOTION_CAPTURE, Board.FLAG_BISHOP_PROMOTION_CAPTURE, Board.FLAG_KNIGHT_PROMOTION_CAPTURE}
 
 function Board:initializeMailbox()
-    for rank = 1, 12 do
+    for rank = 1, 8 do
         self.mailbox[rank] = {}
-        for file = 1, 12 do
-            if rank == 1 or rank == 2 or rank == 11 or rank == 12 or
-               file == 1 or file == 2 or file == 11 or file == 12 then
-                self.mailbox[rank][file] = self.OUT
-            else
-                self.mailbox[rank][file] = self.EMPTY
-            end
+        for file = 1, 8 do
+            self.mailbox[rank][file] = self.EMPTY
         end
     end
 end
@@ -176,8 +171,8 @@ function Board:parseFEN(fen)
 end
 
 function Board:isInsideBoard(rank, file)
-    return self.mailbox[rank][file] ~= self.OUT
-    --return file >= self.FILE_A and file <= self.FILE_H and rank >= self.RANK_1 and rank <= self.RANK_8
+    --return self.mailbox[rank][file] ~= self.OUT
+    return file >= self.FILE_A and file <= self.FILE_H and rank >= self.RANK_1 and rank <= self.RANK_8
 end
 
 function Board:isEmpty(rank, file)
@@ -440,7 +435,7 @@ function Board:isSquareAttacked(rank, file, side)
     -- Verificar ataques diagonales (alfiles y damas)
     for rankDirection = -1, 1, 2 do
         for fileDirection = -1, 1, 2 do
-            for distance = 1, 8 do -- #TODO: Posiblemente solo sea necesario hasta 7, verificar luego
+            for distance = 1, 7 do -- #TODO: Posiblemente solo sea necesario hasta 7, verificar luego
                 local attackerRank = rank + distance * rankDirection
                 local attackerFile = file + distance * fileDirection
                 if self:isInsideBoard(attackerRank, attackerFile) then
@@ -531,9 +526,13 @@ function Board:makeMove(move)
 
     -- Actualizar enPassantSquare
     if flags == self.FLAG_DOUBLE_PAWN_PUSH then
-        self.enPassantSquare = {(fromRank + toRank) / 2, fromFile}
+        self.enPassantSquare[1] = (fromRank + toRank) / 2
+        self.enPassantSquare[2] = fromFile
+        --self.enPassantSquare = {(fromRank + toRank) / 2, fromFile}
     else
-        self.enPassantSquare = {0, 0}
+        --self.enPassantSquare = {0, 0}
+        self.enPassantSquare[1] = 0
+        self.enPassantSquare[2] = 0
     end
 
     -- Actualizar halfMoveClock
@@ -643,8 +642,14 @@ function Board:unmakeMove(move, undo)
     end
 
     -- Restaurar enPassantSquare, castlingRights y halfMoveClock
-    self.enPassantSquare = {unpack(undo.enPassantSquare)}
-    self.castlingRights = {unpack(undo.castlingRights)}
+    --self.enPassantSquare = {unpack(undo.enPassantSquare)}
+    self.enPassantSquare[1] = undo.enPassantSquare[1]
+    self.enPassantSquare[2] = undo.enPassantSquare[2]
+    self.castlingRights[1] = undo.castlingRights[1]
+    self.castlingRights[2] = undo.castlingRights[2]
+    self.castlingRights[3] = undo.castlingRights[3]
+    self.castlingRights[4] = undo.castlingRights[4]
+    --self.castlingRights = {unpack(undo.castlingRights)}
     self.halfMoveClock = undo.halfMoveClock
 
     -- Restaurar enroques
