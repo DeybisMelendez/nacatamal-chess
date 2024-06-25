@@ -206,24 +206,26 @@ function Board:generatePawnMoves(rank, file, side, moves)
     end
 
     -- Captura en diagonal izquierda
-    if self:isInsideBoard(toRank, file - 1) and self:isEnemyPiece(toRank, file - 1, side) then
+    local toFile = file - 1
+    if self:isInsideBoard(toRank, toFile) and self:isEnemyPiece(toRank, toFile, side) then
         if toRank == promotionRank then
             for _, flag in ipairs(self.CAPTURE_PROMOTION_FLAGS) do
-                table.insert(moves, {rank, file, toRank, file - 1 , flag})
+                table.insert(moves, {rank, file, toRank, toFile , flag})
             end
         else
-            table.insert(moves, {rank, file, toRank, file - 1, self.FLAG_CAPTURE})
+            table.insert(moves, {rank, file, toRank, toFile, self.FLAG_CAPTURE})
         end
     end
 
     -- Captura en diagonal derecha
-    if self:isInsideBoard(toRank, file + 1) and self:isEnemyPiece(toRank, file + 1, side) then
+    toFile = file + 1
+    if self:isInsideBoard(toRank, toFile) and self:isEnemyPiece(toRank, toFile, side) then
         if toRank == promotionRank then
             for _, flag in ipairs(self.CAPTURE_PROMOTION_FLAGS) do
-                table.insert(moves, {rank, file, toRank, file + 1, flag})
+                table.insert(moves, {rank, file, toRank, toFile, flag})
             end
         else
-            table.insert(moves, {rank, file, toRank, file + 1, self.FLAG_CAPTURE})
+            table.insert(moves, {rank, file, toRank, toFile, self.FLAG_CAPTURE})
         end
     end
 
