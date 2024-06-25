@@ -188,41 +188,42 @@ function Board:generatePawnMoves(rank, file, side, moves)
     local direction = side == self.WHITE_TO_MOVE and 1 or -1
     local startRank = side == self.WHITE_TO_MOVE and self.RANK_2 or self.RANK_7
     local promotionRank = side == self.WHITE_TO_MOVE and self.RANK_8 or self.RANK_1
+    local toRank = rank + direction
     -- Movimiento hacia adelante
-    if self:isEmpty(rank + direction,file) then
+    if self:isEmpty(toRank,file) then
         
-        if rank + direction == promotionRank then
+        if toRank == promotionRank then
             for _, flag in ipairs(self.PROMOTION_FLAGS) do
-                table.insert(moves, {rank, file, rank + direction, file, flag})
+                table.insert(moves, {rank, file, toRank, file, flag})
             end
         else
-            table.insert(moves, {rank, file, rank + direction, file, self.FLAG_QUIET_MOVE})
+            table.insert(moves, {rank, file, toRank, file, self.FLAG_QUIET_MOVE})
             -- Movimiento inicial doble
-            if rank == startRank and self:isEmpty(rank + 2 * direction, file) then
-                table.insert(moves, {rank, file, rank + 2 * direction, file, self.FLAG_DOUBLE_PAWN_PUSH})
+            if rank == startRank and self:isEmpty(toRank + direction, file) then
+                table.insert(moves, {rank, file, toRank + direction, file, self.FLAG_DOUBLE_PAWN_PUSH})
             end
         end
     end
 
     -- Captura en diagonal izquierda
-    if self:isInsideBoard(rank + direction, file - 1) and self:isEnemyPiece(rank + direction, file - 1, side) then
-        if rank + direction == promotionRank then
+    if self:isInsideBoard(toRank, file - 1) and self:isEnemyPiece(toRank, file - 1, side) then
+        if toRank == promotionRank then
             for _, flag in ipairs(self.CAPTURE_PROMOTION_FLAGS) do
-                table.insert(moves, {rank, file, rank + direction, file - 1 , flag})
+                table.insert(moves, {rank, file, toRank, file - 1 , flag})
             end
         else
-            table.insert(moves, {rank, file, rank + direction, file - 1, self.FLAG_CAPTURE})
+            table.insert(moves, {rank, file, toRank, file - 1, self.FLAG_CAPTURE})
         end
     end
 
     -- Captura en diagonal derecha
-    if self:isInsideBoard(rank + direction, file + 1) and self:isEnemyPiece(rank + direction, file + 1, side) then
-        if rank + direction == promotionRank then
+    if self:isInsideBoard(toRank, file + 1) and self:isEnemyPiece(toRank, file + 1, side) then
+        if toRank == promotionRank then
             for _, flag in ipairs(self.CAPTURE_PROMOTION_FLAGS) do
-                table.insert(moves, {rank, file, rank + direction, file + 1, flag})
+                table.insert(moves, {rank, file, toRank, file + 1, flag})
             end
         else
-            table.insert(moves, {rank, file, rank + direction, file + 1, self.FLAG_CAPTURE})
+            table.insert(moves, {rank, file, toRank, file + 1, self.FLAG_CAPTURE})
         end
     end
 
