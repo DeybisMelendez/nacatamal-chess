@@ -24,7 +24,7 @@ local test_cases = {
             {depth = 3, result = 8902},
             {depth = 4, result = 197281},
             {depth = 5, result = 4865609},
-            --{depth = 6, result = 119060324 }
+            {depth = 6, result = 119060324 }
         }
     },
     {

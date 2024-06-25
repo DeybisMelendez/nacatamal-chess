@@ -159,10 +159,10 @@ function Board:parseFEN(fen)
     for i = 1, #piecePlacement do
         local char = piecePlacement:sub(i, i)
         if char == "/" then
-            rank = rank - 1  -- Move to the next rank down
-            file = self.FILE_A  -- Reset file to A
+            rank = rank - 1
+            file = self.FILE_A
         elseif char:match("%d") then
-            file = file + tonumber(char)  -- Skip the specified number of files
+            file = file + tonumber(char)
         elseif PIECES[char] then
             self.mailbox[rank][file] = PIECES[char]
             file = file + 1
@@ -171,7 +171,6 @@ function Board:parseFEN(fen)
 end
 
 function Board:isInsideBoard(rank, file)
-    --return self.mailbox[rank][file] ~= self.OUT
     return file >= self.FILE_A and file <= self.FILE_H and rank >= self.RANK_1 and rank <= self.RANK_8
 end
 
@@ -438,7 +437,7 @@ function Board:isSquareAttacked(rank, file, side)
     -- Verificar ataques diagonales (alfiles y damas)
     for rankDirection = -1, 1, 2 do
         for fileDirection = -1, 1, 2 do
-            for distance = 1, 7 do -- #TODO: Posiblemente solo sea necesario hasta 7, verificar luego
+            for distance = 1, 7 do
                 local attackerRank = rank + distance * rankDirection
                 local attackerFile = file + distance * fileDirection
                 if self:isInsideBoard(attackerRank, attackerFile) then
@@ -644,15 +643,12 @@ function Board:unmakeMove(move, undo)
         self.mailbox[captureRank][toFile] = self.sideToMove == self.WHITE_TO_MOVE and self.B_PAWN or self.W_PAWN
     end
 
-    -- Restaurar enPassantSquare, castlingRights y halfMoveClock
-    --self.enPassantSquare = {unpack(undo.enPassantSquare)}
     self.enPassantSquare[1] = undo.enPassantSquare[1]
     self.enPassantSquare[2] = undo.enPassantSquare[2]
     self.castlingRights[1] = undo.castlingRights[1]
     self.castlingRights[2] = undo.castlingRights[2]
     self.castlingRights[3] = undo.castlingRights[3]
     self.castlingRights[4] = undo.castlingRights[4]
-    --self.castlingRights = {unpack(undo.castlingRights)}
     self.halfMoveClock = undo.halfMoveClock
 
     -- Restaurar enroques
@@ -683,37 +679,17 @@ function Board:perft(depth)
     local moves = self:generatePseudoLegalMoves()
     local nodes = 0
     local sideToMove = self.sideToMove
-    --local isCheckMate = true
     for _, move in ipairs(moves) do
-        --[[local oldPosition = {}
-        for i,r in ipairs(self.mailbox) do
-            oldPosition[i] = {}
-            for _, f in ipairs(r) do
-                table.insert(oldPosition[i],f)
-            end
-        end]]
+
         local undo = self:makeMove(move)
         -- Verificar que el rey enemigo no está en jaque
         local kingRank, kingFile = self:findKing(sideToMove)
         local isLegal = not self:isSquareAttacked(kingRank, kingFile, sideToMove)
         -- Si la posición es Legal se suma el nodo
         if isLegal then
-            --print(move[1],move[2],move[3],move[4],move[5])
             nodes = nodes + self:perft(depth - 1)
         end
-        --self:print()
         self:unmakeMove(move, undo)
-        --[[for i,r in ipairs(self.mailbox) do
-            for j, _ in ipairs(r) do
-                if not(self.mailbox[i][j] == oldPosition[i][j]) then
-                   print("unmake falló")
-                   self:print()
-                   print(move[1],move[2],move[3],move[4],move[5])
-                   print("Error en:",self.mailbox[i][j], "Se esperaba:",oldPosition[i][j], "En:",i,j)
-                   return
-                end
-            end
-        end]]
     end
 
     return nodes
