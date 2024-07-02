@@ -61,7 +61,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "4. Programando el Board.md",
+                "file": "1. Introducción.md",
                 "mode": "source",
                 "source": false
               }
@@ -134,7 +134,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "4. Programando el Board.md",
+                "file": "1. Introducción.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -151,7 +151,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "4. Programando el Board.md",
+                "file": "1. Introducción.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -174,7 +174,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "4. Programando el Board.md"
+                "file": "1. Introducción.md"
               }
             }
           }
@@ -197,14 +197,14 @@
   },
   "active": "e8c3f1827d4eef21",
   "lastOpenFiles": [
+    "Indice.md",
     "5. Parseando notación FEN.md",
     "4. Programando el Board.md",
-    "Indice.md",
     "3. Representación del tablero.md",
     "2. Partes de un motor de ajedrez.md",
     "1. Introducción.md",
-    "assets/tablero base.png",
     "assets/partes de un motor de ajedrez.png",
+    "assets/tablero base.png",
     "assets"
   ]
 }

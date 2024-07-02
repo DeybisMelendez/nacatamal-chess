@@ -16,7 +16,6 @@ local Board = {
     B_ROOK = -4,
     B_QUEEN = -5,
     B_KING = -6,
-    OUT = 7,
     -- Filas y Columnas
     FILE_A = 1,
     FILE_B = 2,
@@ -71,9 +70,9 @@ Board.PROMOTION_FLAGS = {Board.FLAG_QUEEN_PROMOTION, Board.FLAG_ROOK_PROMOTION, 
 Board.CAPTURE_PROMOTION_FLAGS = {Board.FLAG_QUEEN_PROMOTION_CAPTURE, Board.FLAG_ROOK_PROMOTION_CAPTURE, Board.FLAG_BISHOP_PROMOTION_CAPTURE, Board.FLAG_KNIGHT_PROMOTION_CAPTURE}
 
 function Board:initializeMailbox()
-    for rank = 1, 8 do
+    for rank = self.RANK_1, self.RANK_8 do
         self.mailbox[rank] = {}
-        for file = 1, 8 do
+        for file = self.FILE_A, self.FILE_H do
             self.mailbox[rank][file] = self.EMPTY
         end
     end
@@ -117,7 +116,7 @@ function Board:print()
 end
 
 function Board:parseFEN(fen)
-    -- reset
+    -- Resetear el tablero
     self:initializeMailbox()
     self.castlingRights = {false,false,false,false}
     self.enPassantSquare = {0,0}
@@ -138,16 +137,19 @@ function Board:parseFEN(fen)
         ["q"] = self.B_QUEEN, -- Black Queen
         ["k"] = self.B_KING  -- Black King
     }
-    local rank = self.RANK_8  -- Adjust file to start from 8
-    local file = self.FILE_A  -- Adjust rank to start from A
+    local rank = self.RANK_8
+    local file = self.FILE_A
 
-    local parts = {}
+    local parts = {} -- Dividir el FEN en partes
     for part in string.gmatch(fen, "[^%s]+") do
         table.insert(parts, part)
     end
-    local piecePlacement = parts[1]
-    self.sideToMove = parts[2] == "w" and true or false
 
+    local piecePlacement = parts[1]
+    -- Si "w" mueven las blancas de lo contrario ("b") mueven las negras
+    self.sideToMove = parts[2] == "w" and self.WHITE_TO_MOVE or self.BLACK_TO_MOVE
+
+    -- Agregar derechos de enroque
     if parts[3]:find("K") then self.castlingRights[1] = true end  -- Enroque corto blanco
     if parts[3]:find("Q") then self.castlingRights[2] = true end  -- Enroque largo blanco
     if parts[3]:find("k") then self.castlingRights[3] = true end  -- Enroque corto negro
@@ -156,6 +158,7 @@ function Board:parseFEN(fen)
     self.enPassantSquare = self:convertSquareToCoords(parts[4])
     self.halfMoveClock = parts[5] == nil and 0 or tonumber(parts[5])
     self.fullMoveNumber = parts[6] == nil and 0 or tonumber(parts[6])
+
     for i = 1, #piecePlacement do
         local char = piecePlacement:sub(i, i)
         if char == "/" then
