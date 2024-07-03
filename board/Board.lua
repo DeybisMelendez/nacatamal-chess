@@ -183,7 +183,7 @@ end
 
 function Board:isEnemyPiece(rank, file, side)
     local piece = self.mailbox[rank][file]
-    return (side == self.WHITE_TO_MOVE and piece < self.EMPTY) or (side == self.BLACK_TO_MOVE and piece > self.EMPTY and piece < self.OUT)
+    return (side == self.WHITE_TO_MOVE and piece < self.EMPTY) or (side == self.BLACK_TO_MOVE and piece > self.EMPTY)
 end
 
 function Board:generatePawnMoves(rank, file, side, moves)
@@ -533,9 +533,7 @@ function Board:makeMove(move)
     if flags == self.FLAG_DOUBLE_PAWN_PUSH then
         self.enPassantSquare[1] = (fromRank + toRank) / 2
         self.enPassantSquare[2] = fromFile
-        --self.enPassantSquare = {(fromRank + toRank) / 2, fromFile}
     else
-        --self.enPassantSquare = {0, 0}
         self.enPassantSquare[1] = 0
         self.enPassantSquare[2] = 0
     end
