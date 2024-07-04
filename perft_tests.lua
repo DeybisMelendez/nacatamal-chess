@@ -1,4 +1,4 @@
-local board = require "board.Board"
+local board = require "board"
 
 local function run_perft_tests(fen, tests)
     board:parseFEN(fen)

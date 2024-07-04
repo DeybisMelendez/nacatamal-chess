@@ -4,107 +4,18 @@
     "type": "split",
     "children": [
       {
-        "id": "eb69baf34ca5b9bb",
+        "id": "7015cb3a8889e8aa",
         "type": "tabs",
         "children": [
           {
-            "id": "77975e4a6d1d4f3f",
+            "id": "cd1bf044120682cb",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "1. Introducción.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          },
-          {
-            "id": "c76b2e4571e67d11",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "2. Partes de un motor de ajedrez.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          },
-          {
-            "id": "0ef04fa080f15027",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "3. Representación del tablero.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          },
-          {
-            "id": "17774bde7b31cc08",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "4. Programando el Board.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          },
-          {
-            "id": "e8c3f1827d4eef21",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "5. Parseando notación FEN.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          },
-          {
-            "id": "527bc9009485b301",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "6. Generación de movimientos.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          },
-          {
-            "id": "f62a82943326b4b5",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "6. Generación de movimientos.md",
-                "mode": "source",
-                "source": false
-              }
-            }
-          },
-          {
-            "id": "ab91d2f659db9cef",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "8. Performance Test (perft).md",
-                "mode": "source",
-                "source": false
-              }
+              "type": "empty",
+              "state": {}
             }
           }
-        ],
-        "currentTab": 7
+        ]
       }
     ],
     "direction": "vertical"
@@ -170,7 +81,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "8. Performance Test (perft).md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -187,7 +97,6 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "8. Performance Test (perft).md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -209,9 +118,7 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {
-                "file": "8. Performance Test (perft).md"
-              }
+              "state": {}
             }
           }
         ]
@@ -231,19 +138,19 @@
       "command-palette:Abrir paleta de comandos": false
     }
   },
-  "active": "ab91d2f659db9cef",
+  "active": "cd1bf044120682cb",
   "lastOpenFiles": [
+    "1. Introducción.md",
+    "2. Partes de un motor de ajedrez.md",
+    "3. Representación del tablero.md",
+    "4. Programando el Board.md",
+    "5. Parseando notación FEN.md",
     "6. Generación de movimientos.md",
+    "Indice.md",
     "8. Performance Test (perft).md",
     "7. Make y Unmake.md",
     "assets/Movimientos pseudolegales.png",
     "assets/Ejemplo de posición ilegal.png",
-    "4. Programando el Board.md",
-    "3. Representación del tablero.md",
-    "5. Parseando notación FEN.md",
-    "1. Introducción.md",
-    "Indice.md",
-    "2. Partes de un motor de ajedrez.md",
     "assets/partes de un motor de ajedrez.png",
     "assets/tablero base.png",
     "assets"

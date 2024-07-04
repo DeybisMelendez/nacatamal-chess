@@ -1,5 +1,5 @@
-local Board = require "board.Board"
+local Board = require "board"
+local Eval = require "evaluation"
+Board:parseFEN("8/3pkp2/8/4PP2/4K3/8/8/8 w - - 0 1")
 
-Board:parseFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-
-print(Board:perft(5))
+Eval:eval(Board,1,true)
